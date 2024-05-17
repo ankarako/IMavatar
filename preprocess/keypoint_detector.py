@@ -11,7 +11,7 @@ args = parser.parse_args()
 
 image_path = args.path + '/image/'
 print(image_path)
-fa = face_alignment.FaceAlignment(face_alignment.LandmarksType._2D, flip_input=False)
+fa = face_alignment.FaceAlignment(face_alignment.LandmarksType.TWO_D, flip_input=False)
 
 preds = fa.get_landmarks_from_directory(image_path)
 import json

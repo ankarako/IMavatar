@@ -1,10 +1,10 @@
 #######################################################
 # Things you need to modify
-subject_name='yufeng'
-path='/is/cluster/work/yzheng/IMavatar_data/datasets'
+subject_name='person_0004'
+path='/media/ankarako/data/dev/datasets/splatting-avatar/'
 video_folder=$path/$subject_name
-video_names='MVI_1810.MOV  MVI_1811.MOV  MVI_1812.MOV  MVI_1814.MOV'
-shape_video='MVI_1810.MOV'
+video_names='video.mp4'
+shape_video='video.mp4'
 fps=25
 # Center crop
 crop="1080:1080:420:0"
@@ -14,12 +14,15 @@ fx=1539.67462
 fy=1508.93280
 cx=261.442628
 cy=253.231895
+
+
 ########################################################
 pwd=$(pwd)
 path_modnet=$(pwd)'/submodules/MODNet'
 path_deca=$(pwd)'/submodules/DECA'
 path_parser=$(pwd)'/submodules/face-parsing.PyTorch'
 ########################################################
+
 set -e
 echo "crop and resize video"
 cd $pwd
@@ -29,8 +32,10 @@ do
   echo $video
   IFS='.' read -r -a array <<< $video
   echo $video_folder/$subject_name/"${array[0]}"/"image"
-  ffmpeg -y -i $video_path -vf "fps=$fps, crop=$crop, scale=$resize:$resize" -c:v libx264 $video_folder/"${array[0]}_cropped.mp4"
+  ffmpeg -y -i $video_path -vf "fps=$fps, scale=$resize:$resize" -c:v libx264 $video_folder/"${array[0]}_cropped.mp4"
 done
+
+
 echo "background/foreground segmentation"
 cd $path_modnet
 for video in $video_names
@@ -41,6 +46,8 @@ do
   mkdir -p $video_folder/$subject_name/"${array[0]}"
   python -m demo.video_matting.custom.run --video $video_folder/"${array[0]}_cropped.mp4" --result-type matte --fps $fps
 done
+
+
 echo "save the images and masks with ffmpeg"
 # sudo apt install ffmpeg
 cd $pwd
@@ -55,6 +62,8 @@ do
   mkdir -p $video_folder/$subject_name/"${array[0]}"/"mask"
   ffmpeg -i $video_folder/"${array[0]}_cropped_matte.mp4" -q:v 2 $video_folder/$subject_name/"${array[0]}"/"mask"/"%d.png"
 done
+
+
 echo "DECA FLAME parameter estimation"
 cd $path_deca
 for video in $video_names
@@ -64,6 +73,8 @@ do
   mkdir -p $video_folder/$subject_name/"${array[0]}"/"deca"
   python demos/demo_reconstruct.py -i $video_folder/$subject_name/"${array[0]}"/image --savefolder $video_folder/$subject_name/"${array[0]}"/"deca" --saveCode True --saveVis False --sample_step 1  --render_orig False
 done
+
+
 echo "face alignment landmark detector"
 cd $pwd
 for video in $video_names
@@ -72,6 +83,8 @@ do
   IFS='.' read -r -a array <<< $video
   python keypoint_detector.py --path $video_folder/$subject_name/"${array[0]}"
 done
+
+
 echo "iris segmentation with fdlite"
 cd $pwd
 for video in $video_names
@@ -81,6 +94,9 @@ do
   IFS='.' read -r -a array <<< $video
   python iris.py --path $video_folder/$subject_name/"${array}"
 done
+
+
+
 echo "fit FLAME parameter for one video: "$shape_video
 cd $path_deca
 IFS='.' read -r -a array <<< $shape_video
@@ -99,6 +115,9 @@ do
   echo $video
   python optimize.py --path $video_folder/$subject_name/"${array}" --shape_from $shape_from  --cx $cx --cy $cy --fx $fx --fy $fy --size $resize
 done
+
+
+
 echo "semantic segmentation with face parsing"
 cd $path_parser
 for video in $video_names
